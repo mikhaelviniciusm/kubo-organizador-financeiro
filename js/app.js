@@ -291,7 +291,7 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
       </div>
 
       <div class="form-group">
-        <label>Descrição / Nota</label>
+        <label>Descrição</label>
         <input type="text" id="tx-note" class="form-input" placeholder="Ex: Almoço, Smartphone, Uber..." required>
       </div>
 
@@ -304,7 +304,7 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
         </div>
 
         <div class="form-group">
-          <label>Conta / Cartão</label>
+          <label>Conta</label>
           <select id="tx-account" class="form-select" onchange="window.onAccountChange('tx-account', 'tx-method')" required>
             ${accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
           </select>

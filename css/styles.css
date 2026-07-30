@@ -1064,7 +1064,6 @@ body.modal-open {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 12px 14px;
   border-radius: var(--radius-sm);
   font-size: 0.92rem;
   outline: none;
@@ -1076,13 +1075,33 @@ body.modal-open {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
+.form-input, .form-select {
+  height: 44px;
+  padding: 0 12px;
+}
+
+.form-textarea {
+  padding: 12px 14px;
+}
+
 .form-input[type="date"],
 .form-input[type="time"],
 .form-input[type="datetime-local"] {
-  padding: 12px 6px 12px 10px;
+  height: 44px;
+  padding: 0 6px 0 10px;
   font-size: 0.85rem;
   min-width: 0;
   max-width: 100%;
+}
+
+.form-input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.form-input[type="date"]::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
 /* Dark mode: tell browser to use dark UI for native date/time picker icons */
