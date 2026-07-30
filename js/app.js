@@ -324,7 +324,7 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
         </div>
 
         <div class="form-group">
-          <label>Data da Compra</label>
+          <label>Data</label>
           <input type="date" id="tx-date" class="form-input" value="${today}" required>
         </div>
       </div>
@@ -342,7 +342,7 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
 
       <!-- Recurrence Checkbox -->
       <div style="background: var(--bg-input); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-        <label for="tx-recurring" style="font-weight: 600; font-size: 0.82rem; cursor: pointer;">Lançamento Recorrente</label>
+        <label for="tx-recurring" style="font-weight: 600; font-size: 0.82rem; cursor: pointer;">Lançamento Recorrente (Mensal)</label>
         <input type="checkbox" id="tx-recurring" style="width: 18px; height: 18px; cursor: pointer;">
       </div>
 
@@ -480,7 +480,7 @@ window.openEditTransactionModal = function (id) {
       </div>
 
       <div class="form-group">
-        <label>Descrição / Nota</label>
+        <label>Descrição</label>
         <input type="text" id="edit-tx-note" class="form-input" value="${tx.note || ''}" required>
       </div>
 
