@@ -4,12 +4,12 @@
   "description": "Organizador financeiro pessoal privado, elegante e ultrarrápido.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#050811",
+  "background_color": "#EEEEEE",
   "theme_color": "#050811",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "assets/Logotipo.svg",
+      "src": "assets/AppIcon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
