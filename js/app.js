@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalOverlay) closeModal();
     });
   }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
 
   window.store.subscribe(() => {
     updateLockBtnVisibility();
@@ -236,6 +241,7 @@ function openModal(title, contentHtml) {
   titleEl.innerText = title;
   bodyEl.innerHTML = contentHtml;
   container.classList.remove('hidden');
+  document.body.classList.add('modal-open');
 
   const maskInputs = bodyEl.querySelectorAll('[data-currency-input]');
   maskInputs.forEach(input => window.applyCurrencyMask(input));
@@ -245,6 +251,7 @@ window.openModal = openModal;
 function closeModal() {
   const container = document.getElementById('modal-container');
   container.classList.add('hidden');
+  document.body.classList.remove('modal-open');
 }
 window.closeModal = closeModal;
 
