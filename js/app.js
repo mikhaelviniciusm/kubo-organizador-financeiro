@@ -295,23 +295,21 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
         <input type="text" id="tx-note" class="form-input" placeholder="Ex: Almoço, Smartphone, Uber..." required>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="form-group">
-          <label>Categoria</label>
-          <select id="tx-category" class="form-select" required>
-            ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-          </select>
-        </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="tx-category" class="form-select" required>
+          ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+      </div>
 
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="form-group">
           <label>Conta</label>
           <select id="tx-account" class="form-select" onchange="window.onAccountChange('tx-account', 'tx-method')" required>
             ${accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
           </select>
         </div>
-      </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="form-group">
           <label>Forma de Pagamento</label>
           <select id="tx-method" class="form-select" onchange="window.toggleInstallmentsVisibility()">
@@ -322,11 +320,11 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
             <option value="Transferência">Transferência</option>
           </select>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label>Data</label>
-          <input type="date" id="tx-date" class="form-input" value="${today}" required>
-        </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="tx-date" class="form-input" value="${today}" required>
       </div>
 
       <!-- Installments Container -->
@@ -484,23 +482,21 @@ window.openEditTransactionModal = function (id) {
         <input type="text" id="edit-tx-note" class="form-input" value="${tx.note || ''}" required>
       </div>
 
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="edit-tx-category" class="form-select" required>
+          ${categories.map(c => `<option value="${c.id}" ${c.id === tx.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
+      </div>
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="form-group">
-          <label>Categoria</label>
-          <select id="edit-tx-category" class="form-select" required>
-            ${categories.map(c => `<option value="${c.id}" ${c.id === tx.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Conta / Cartão</label>
+          <label>Conta</label>
           <select id="edit-tx-account" class="form-select" onchange="window.onAccountChange('edit-tx-account', 'edit-tx-method')" required>
             ${accounts.map(a => `<option value="${a.id}" ${a.id === tx.accountId ? 'selected' : ''}>${a.name}</option>`).join('')}
           </select>
         </div>
-      </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="form-group">
           <label>Forma de Pagamento</label>
           <select id="edit-tx-method" class="form-select">
@@ -511,11 +507,11 @@ window.openEditTransactionModal = function (id) {
             <option value="Transferência" ${tx.paymentMethod === 'Transferência' ? 'selected' : ''}>Transferência</option>
           </select>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label>Data</label>
-          <input type="date" id="edit-tx-date" class="form-input" value="${tx.date}" required>
-        </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="edit-tx-date" class="form-input" value="${tx.date}" required>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
