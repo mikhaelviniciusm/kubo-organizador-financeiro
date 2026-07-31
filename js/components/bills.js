@@ -75,7 +75,7 @@ window.renderBills = function(container) {
                 </div>
 
                 <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
-                  <div style="font-weight: 800; font-size: 1rem; color: ${isOverdue ? 'var(--color-red)' : 'var(--text-primary)'}; white-space: nowrap;">
+                  <div class="hide-val" style="font-weight: 800; font-size: 1rem; color: ${isOverdue ? 'var(--color-red)' : 'var(--text-primary)'}; white-space: nowrap;">
                     ${window.formatBRL(b.amount)}
                   </div>
                   <button onclick="window.openPayBillModal('${b.id}')"
@@ -123,11 +123,11 @@ window.renderBills = function(container) {
                 </div>
 
                 <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
-                  <div style="font-weight: 800; font-size: 0.95rem; color: var(--color-green); white-space: nowrap;">
+                  <div class="hide-val" style="font-weight: 800; font-size: 0.95rem; color: var(--color-green); white-space: nowrap;">
                     ${window.formatBRL(b.amount)}
                   </div>
-                  <button onclick="window.store.unmarkBillPaid('${b.id}'); window.showToast('Pagamento desfeito! Conta de volta para pendentes.', 'info'); window.renderBills(document.getElementById('sub-view-bills'));"
-                          style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 5px 10px; border-radius: var(--radius-xs); font-weight: 700; font-size: 0.72rem; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Desfazer pagamento">
+                  <button onclick="window.store.unmarkBillPaid('${b.id}'); window.showToast('Pagamento desfeito! Conta de volta para pendentes.', 'info'); window.refreshBillsView();"
+                          style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 5px 10px; border-radius: var(--radius-xs); font-weight: 700; font-size: 0.72rem; cursor: pointer; display: flex; align-items: gap: 4px;" title="Desfazer pagamento">
                     ${window.getSVGIcon('rotate-ccw', 12, 2)} Desfazer
                   </button>
                 </div>
@@ -137,4 +137,11 @@ window.renderBills = function(container) {
         </div>
       </div>
   `;
+};
+
+window.refreshBillsView = function() {
+  const container = document.getElementById('planning-sub-content') || document.getElementById('sub-view-bills');
+  if (container && window.renderBills) {
+    window.renderBills(container);
+  }
 };

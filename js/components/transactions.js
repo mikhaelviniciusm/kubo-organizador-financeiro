@@ -148,3 +148,8 @@ window.setTxTypeFilter = function (type) {
   const container = document.getElementById('view-transactions');
   if (container) window.renderTransactions(container);
 };
+
+window.goToTransactionsFiltered = function (type) {
+  window.currentTxFilter.type = type;
+  window.switchTab('view-transactions');
+};

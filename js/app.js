@@ -78,7 +78,6 @@ window.setAppTheme = function (theme) {
   document.documentElement.setAttribute('data-theme', theme);
   window.store.data.theme = theme;
   window.store.save();
-  window.showToast(`Tema ${theme === 'dark' ? 'Escuro' : 'Claro'} ativado!`);
   const container = document.getElementById('view-tools');
   if (container && window.renderTools) window.renderTools(container);
 };
@@ -192,6 +191,7 @@ function initTheme() {
   const userChoice = window.store.data.theme;
   const activeTheme = userChoice || getSystemPreferredTheme();
   document.documentElement.setAttribute('data-theme', activeTheme);
+  initPrivacyMode();
 
   // Auto update when device OS theme changes (e.g. sunset/sunrise or system settings)
   if (window.matchMedia) {
@@ -203,6 +203,18 @@ function initTheme() {
     });
   }
 }
+
+function initPrivacyMode() {
+  const isHidden = window.store.data.hideValues || false;
+  document.documentElement.setAttribute('data-hide-values', isHidden ? 'true' : 'false');
+}
+
+window.togglePrivacyMode = function (enabled) {
+  window.store.data.hideValues = enabled;
+  window.store.save();
+  document.documentElement.setAttribute('data-hide-values', enabled ? 'true' : 'false');
+  window.showToast(enabled ? 'Modo Privacidade ativado (valores ocultos).' : 'Modo Privacidade desativado.');
+};
 
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
@@ -277,11 +289,19 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
   const accounts = window.store.getAccounts();
   const today = new Date().toISOString().split('T')[0];
 
+  const expenseCats = categories.filter(c => c.type === 'expense');
+  const incomeCats = categories.filter(c => c.type === 'income');
+  const regularAccounts = accounts.filter(a => a.type !== 'credit');
+
   const html = `
     <form id="tx-form" onsubmit="window.handleSaveTransaction(event)">
-      <div class="segmented-control" style="margin-bottom: 14px;">
-        <button type="button" id="type-btn-expense" class="${defaultType === 'expense' ? 'active' : ''}" onclick="window.setModalTxType('expense')">Despesa</button>
-        <button type="button" id="type-btn-income" class="${defaultType === 'income' ? 'active' : ''}" onclick="window.setModalTxType('income')">Receita</button>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+        <button type="button" id="type-btn-expense" class="tx-type-btn ${defaultType === 'expense' ? 'active expense' : ''}" onclick="window.setModalTxType('expense')" style="padding: 10px; border-radius: var(--radius-sm); border: 1.5px solid ${defaultType === 'expense' ? 'var(--color-red)' : 'var(--border-color)'}; background: ${defaultType === 'expense' ? 'rgba(255,69,58,0.15)' : 'var(--glass-input)'}; color: ${defaultType === 'expense' ? 'var(--color-red)' : 'var(--text-secondary)'}; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          ${window.getSVGIcon('arrow-up-circle', 16, 2.5)} Despesa
+        </button>
+        <button type="button" id="type-btn-income" class="tx-type-btn ${defaultType === 'income' ? 'active income' : ''}" onclick="window.setModalTxType('income')" style="padding: 10px; border-radius: var(--radius-sm); border: 1.5px solid ${defaultType === 'income' ? 'var(--color-green)' : 'var(--border-color)'}; background: ${defaultType === 'income' ? 'rgba(48,209,88,0.15)' : 'var(--glass-input)'}; color: ${defaultType === 'income' ? 'var(--color-green)' : 'var(--text-secondary)'}; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          ${window.getSVGIcon('arrow-down-circle', 16, 2.5)} Receita
+        </button>
       </div>
       <input type="hidden" id="modal-tx-type" value="${defaultType}">
 
@@ -291,33 +311,45 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
       </div>
 
       <div class="form-group">
-        <label>Descrição</label>
-        <input type="text" id="tx-note" class="form-input" placeholder="Ex: Almoço, Smartphone, Uber..." required>
+        <label>Descrição <span style="color: var(--text-muted); font-weight: 400;"> (opcional)</span></label>
+        <input type="text" id="tx-note" class="form-input" placeholder="Ex: Almoço, Smartphone, Uber...">
       </div>
 
       <div class="form-group">
         <label>Categoria</label>
-        <select id="tx-category" class="form-select" required>
-          ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        <select id="tx-category" class="form-select" required onchange="window.onCategoryChange()">
+          <optgroup label="Despesas">${expenseCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</optgroup>
+          <optgroup label="Receitas">${incomeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</optgroup>
         </select>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="form-group">
-          <label>Conta</label>
-          <select id="tx-account" class="form-select" onchange="window.onAccountChange('tx-account', 'tx-method')" required>
-            ${accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
-          </select>
-        </div>
+      <div id="tx-expense-fields">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Conta</label>
+            <select id="tx-account" class="form-select" onchange="window.onAccountChange('tx-account', 'tx-method')" required>
+              ${accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
+            </select>
+          </div>
 
+          <div class="form-group">
+            <label>Forma de Pagamento</label>
+            <select id="tx-method" class="form-select" onchange="window.toggleInstallmentsVisibility()">
+              <option value="Pix">Pix</option>
+              <option value="Débito">Débito</option>
+              <option value="Crédito">Crédito</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Transferência">Transferência</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="tx-income-fields" style="display: none;">
         <div class="form-group">
-          <label>Forma de Pagamento</label>
-          <select id="tx-method" class="form-select" onchange="window.toggleInstallmentsVisibility()">
-            <option value="Pix">Pix</option>
-            <option value="Débito">Débito</option>
-            <option value="Crédito">Crédito</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Transferência">Transferência</option>
+          <label>Conta de Destino</label>
+          <select id="tx-account-income" class="form-select">
+            ${regularAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -351,6 +383,7 @@ window.openAddTransactionModal = function (defaultType = 'expense') {
   openModal('Nova Transação', html);
   setTimeout(() => {
     window.onAccountChange('tx-account', 'tx-method');
+    window.updateTxFields(defaultType);
   }, 50);
 };
 
@@ -409,11 +442,38 @@ window.setModalTxType = function (type) {
   const btnExp = document.getElementById('type-btn-expense');
   const btnInc = document.getElementById('type-btn-income');
   if (type === 'expense') {
-    btnExp.classList.add('active');
-    btnInc.classList.remove('active');
+    btnExp.style.borderColor = 'var(--color-red)';
+    btnExp.style.background = 'rgba(255,69,58,0.15)';
+    btnExp.style.color = 'var(--color-red)';
+    btnInc.style.borderColor = 'var(--border-color)';
+    btnInc.style.background = 'var(--glass-input)';
+    btnInc.style.color = 'var(--text-secondary)';
   } else {
-    btnInc.classList.add('active');
-    btnExp.classList.remove('active');
+    btnInc.style.borderColor = 'var(--color-green)';
+    btnInc.style.background = 'rgba(48,209,88,0.15)';
+    btnInc.style.color = 'var(--color-green)';
+    btnExp.style.borderColor = 'var(--border-color)';
+    btnExp.style.background = 'var(--glass-input)';
+    btnExp.style.color = 'var(--text-secondary)';
+  }
+  window.updateTxFields(type);
+};
+
+window.updateTxFields = function (type) {
+  const expenseFields = document.getElementById('tx-expense-fields');
+  const incomeFields = document.getElementById('tx-income-fields');
+  if (expenseFields) expenseFields.style.display = type === 'expense' ? 'block' : 'none';
+  if (incomeFields) incomeFields.style.display = type === 'income' ? 'block' : 'none';
+  if (type === 'expense') window.toggleInstallmentsVisibility();
+  else { const instBox = document.getElementById('installments-box-container'); if (instBox) instBox.style.display = 'none'; }
+};
+
+window.onCategoryChange = function () {
+  // auto-fill note with category name if note is empty
+  const note = document.getElementById('tx-note');
+  if (note && !note.value.trim()) {
+    const cat = window.store.getCategories().find(c => c.id === document.getElementById('tx-category')?.value);
+    if (cat) note.placeholder = cat.name;
   }
 };
 
@@ -421,18 +481,27 @@ window.handleSaveTransaction = function (e) {
   e.preventDefault();
   const type = document.getElementById('modal-tx-type').value;
   const amount = window.parseCurrencyValue(document.getElementById('tx-amount').value);
-  const note = document.getElementById('tx-note').value;
   const categoryId = document.getElementById('tx-category').value;
-  const accountId = document.getElementById('tx-account').value;
-  const paymentMethod = document.getElementById('tx-method').value;
+  const cat = window.store.getCategories().find(c => c.id === categoryId);
+  const noteInput = document.getElementById('tx-note').value.trim();
+  const note = noteInput || (cat ? cat.name : '');
   const date = document.getElementById('tx-date').value;
+  const isRecurring = document.getElementById('tx-recurring')?.checked || false;
 
-  const instBox = document.getElementById('installments-box-container');
-  const installmentsCount = (instBox && instBox.style.display !== 'none') ? (Number(document.getElementById('tx-installments')?.value) || 1) : 1;
-  const isRecurring = document.getElementById('tx-recurring').checked;
+  let accountId, paymentMethod, installmentsCount;
+  if (type === 'expense') {
+    accountId = document.getElementById('tx-account').value;
+    paymentMethod = document.getElementById('tx-method').value;
+    const instBox = document.getElementById('installments-box-container');
+    installmentsCount = (instBox && instBox.style.display !== 'none') ? (Number(document.getElementById('tx-installments')?.value) || 1) : 1;
+  } else {
+    accountId = document.getElementById('tx-account-income')?.value || window.store.getAccounts().find(a => a.type !== 'credit')?.id;
+    paymentMethod = 'Pix';
+    installmentsCount = 1;
+  }
 
   if (amount <= 0) {
-    alert('Informe um valor maior que zero.');
+    window.showToast('Informe um valor maior que zero.', 'error');
     return;
   }
 
@@ -463,12 +532,20 @@ window.openEditTransactionModal = function (id) {
 
   const categories = window.store.getCategories();
   const accounts = window.store.getAccounts();
+  const expenseCats = categories.filter(c => c.type === 'expense');
+  const incomeCats = categories.filter(c => c.type === 'income');
+  const regularAccounts = accounts.filter(a => a.type !== 'credit');
+  const isIncome = tx.type === 'income';
 
   const html = `
     <form onsubmit="window.handleUpdateTransaction(event, '${tx.id}')">
-      <div class="segmented-control" style="margin-bottom: 14px;">
-        <button type="button" id="edit-type-btn-expense" class="${tx.type === 'expense' ? 'active' : ''}" onclick="window.setEditModalTxType('expense')">Despesa</button>
-        <button type="button" id="edit-type-btn-income" class="${tx.type === 'income' ? 'active' : ''}" onclick="window.setEditModalTxType('income')">Receita</button>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+        <button type="button" id="edit-type-btn-expense" onclick="window.setEditModalTxType('expense')" style="padding: 10px; border-radius: var(--radius-sm); border: 1.5px solid ${!isIncome ? 'var(--color-red)' : 'var(--border-color)'}; background: ${!isIncome ? 'rgba(255,69,58,0.15)' : 'var(--glass-input)'}; color: ${!isIncome ? 'var(--color-red)' : 'var(--text-secondary)'}; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          ${window.getSVGIcon('arrow-up-circle', 16, 2.5)} Despesa
+        </button>
+        <button type="button" id="edit-type-btn-income" onclick="window.setEditModalTxType('income')" style="padding: 10px; border-radius: var(--radius-sm); border: 1.5px solid ${isIncome ? 'var(--color-green)' : 'var(--border-color)'}; background: ${isIncome ? 'rgba(48,209,88,0.15)' : 'var(--glass-input)'}; color: ${isIncome ? 'var(--color-green)' : 'var(--text-secondary)'}; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          ${window.getSVGIcon('arrow-down-circle', 16, 2.5)} Receita
+        </button>
       </div>
       <input type="hidden" id="edit-modal-tx-type" value="${tx.type}">
 
@@ -478,33 +555,45 @@ window.openEditTransactionModal = function (id) {
       </div>
 
       <div class="form-group">
-        <label>Descrição</label>
-        <input type="text" id="edit-tx-note" class="form-input" value="${tx.note || ''}" required>
+        <label>Descrição <span style="color: var(--text-muted); font-weight: 400;">(opcional)</span></label>
+        <input type="text" id="edit-tx-note" class="form-input" value="${tx.note || ''}" placeholder="Usa nome da categoria se vazio">
       </div>
 
       <div class="form-group">
         <label>Categoria</label>
         <select id="edit-tx-category" class="form-select" required>
-          ${categories.map(c => `<option value="${c.id}" ${c.id === tx.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}
+          <optgroup label="Despesas">${expenseCats.map(c => `<option value="${c.id}" ${c.id === tx.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}</optgroup>
+          <optgroup label="Receitas">${incomeCats.map(c => `<option value="${c.id}" ${c.id === tx.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}</optgroup>
         </select>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="form-group">
-          <label>Conta</label>
-          <select id="edit-tx-account" class="form-select" onchange="window.onAccountChange('edit-tx-account', 'edit-tx-method')" required>
-            ${accounts.map(a => `<option value="${a.id}" ${a.id === tx.accountId ? 'selected' : ''}>${a.name}</option>`).join('')}
-          </select>
-        </div>
+      <div id="edit-expense-fields" style="display: ${isIncome ? 'none' : 'block'}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Conta</label>
+            <select id="edit-tx-account" class="form-select" onchange="window.onAccountChange('edit-tx-account', 'edit-tx-method')" required>
+              ${accounts.map(a => `<option value="${a.id}" ${a.id === tx.accountId ? 'selected' : ''}>${a.name}</option>`).join('')}
+            </select>
+          </div>
 
+          <div class="form-group">
+            <label>Forma de Pagamento</label>
+            <select id="edit-tx-method" class="form-select">
+              <option value="Pix" ${tx.paymentMethod === 'Pix' ? 'selected' : ''}>Pix</option>
+              <option value="Débito" ${tx.paymentMethod === 'Débito' ? 'selected' : ''}>Débito</option>
+              <option value="Crédito" ${tx.paymentMethod === 'Crédito' ? 'selected' : ''}>Crédito</option>
+              <option value="Dinheiro" ${tx.paymentMethod === 'Dinheiro' ? 'selected' : ''}>Dinheiro</option>
+              <option value="Transferência" ${tx.paymentMethod === 'Transferência' ? 'selected' : ''}>Transferência</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="edit-income-fields" style="display: ${isIncome ? 'block' : 'none'}">
         <div class="form-group">
-          <label>Forma de Pagamento</label>
-          <select id="edit-tx-method" class="form-select">
-            <option value="Pix" ${tx.paymentMethod === 'Pix' ? 'selected' : ''}>Pix</option>
-            <option value="Débito" ${tx.paymentMethod === 'Débito' ? 'selected' : ''}>Débito</option>
-            <option value="Crédito" ${tx.paymentMethod === 'Crédito' ? 'selected' : ''}>Crédito</option>
-            <option value="Dinheiro" ${tx.paymentMethod === 'Dinheiro' ? 'selected' : ''}>Dinheiro</option>
-            <option value="Transferência" ${tx.paymentMethod === 'Transferência' ? 'selected' : ''}>Transferência</option>
+          <label>Conta de Destino</label>
+          <select id="edit-tx-account-income" class="form-select">
+            ${regularAccounts.map(a => `<option value="${a.id}" ${a.id === tx.accountId ? 'selected' : ''}>${a.name}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -529,26 +618,47 @@ window.setEditModalTxType = function (type) {
   const btnExp = document.getElementById('edit-type-btn-expense');
   const btnInc = document.getElementById('edit-type-btn-income');
   if (type === 'expense') {
-    btnExp.classList.add('active');
-    btnInc.classList.remove('active');
+    btnExp.style.borderColor = 'var(--color-red)';
+    btnExp.style.background = 'rgba(255,69,58,0.15)';
+    btnExp.style.color = 'var(--color-red)';
+    btnInc.style.borderColor = 'var(--border-color)';
+    btnInc.style.background = 'var(--glass-input)';
+    btnInc.style.color = 'var(--text-secondary)';
   } else {
-    btnInc.classList.add('active');
-    btnExp.classList.remove('active');
+    btnInc.style.borderColor = 'var(--color-green)';
+    btnInc.style.background = 'rgba(48,209,88,0.15)';
+    btnInc.style.color = 'var(--color-green)';
+    btnExp.style.borderColor = 'var(--border-color)';
+    btnExp.style.background = 'var(--glass-input)';
+    btnExp.style.color = 'var(--text-secondary)';
   }
+  const expFields = document.getElementById('edit-expense-fields');
+  const incFields = document.getElementById('edit-income-fields');
+  if (expFields) expFields.style.display = type === 'expense' ? 'block' : 'none';
+  if (incFields) incFields.style.display = type === 'income' ? 'block' : 'none';
 };
 
 window.handleUpdateTransaction = function (e, id) {
   e.preventDefault();
   const type = document.getElementById('edit-modal-tx-type').value;
   const amount = window.parseCurrencyValue(document.getElementById('edit-tx-amount').value);
-  const note = document.getElementById('edit-tx-note').value;
   const categoryId = document.getElementById('edit-tx-category').value;
-  const accountId = document.getElementById('edit-tx-account').value;
-  const paymentMethod = document.getElementById('edit-tx-method').value;
+  const cat = window.store.getCategories().find(c => c.id === categoryId);
+  const noteInput = document.getElementById('edit-tx-note').value.trim();
+  const note = noteInput || (cat ? cat.name : '');
   const date = document.getElementById('edit-tx-date').value;
 
+  let accountId, paymentMethod;
+  if (type === 'expense') {
+    accountId = document.getElementById('edit-tx-account').value;
+    paymentMethod = document.getElementById('edit-tx-method').value;
+  } else {
+    accountId = document.getElementById('edit-tx-account-income')?.value || window.store.getAccounts().find(a => a.type !== 'credit')?.id;
+    paymentMethod = 'Pix';
+  }
+
   if (amount <= 0) {
-    alert('Informe um valor válido.');
+    window.showToast('Informe um valor válido.', 'error');
     return;
   }
 
@@ -558,11 +668,30 @@ window.handleUpdateTransaction = function (e, id) {
 };
 
 window.confirmDeleteTx = function (id) {
-  if (confirm('Deseja excluir permanentemente esta transação?')) {
-    window.store.deleteTransaction(id);
-    closeModal();
-    window.showToast('Transação excluída!');
-  }
+  const html = `
+    <div style="display: flex; flex-direction: column; gap: 16px; text-align: center; padding: 10px 0;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-red-light); color: var(--color-red); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+        ${window.getSVGIcon('trash-2', 28, 2)}
+      </div>
+      <div>
+        <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">Excluir Transação?</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">Esta ação é <strong>permanente</strong> e não pode ser desfeita. O saldo da conta será revertido.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+        <button class="btn-danger" onclick="window.doDeleteTx('${id}')" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          ${window.getSVGIcon('trash-2', 16, 2)} Excluir Permanentemente
+        </button>
+        <button class="btn-secondary" onclick="window.closeModal()" style="margin-top: 2px;">Cancelar</button>
+      </div>
+    </div>
+  `;
+  openModal('Confirmar Exclusão', html);
+};
+
+window.doDeleteTx = function (id) {
+  window.store.deleteTransaction(id);
+  closeModal();
+  window.showToast('Transação excluída!');
 };
 
 // --- Modal: Pay Bill ---
@@ -624,215 +753,208 @@ window.handleConfirmPayBill = function (e, billId) {
   window.showToast('Pagamento registrado no extrato com sucesso!');
 };
 
-// --- Modal: Add & Edit Account ---
-window.openAddAccountModal = function () {
+// --- Modal: Add Account (Conta Corrente) ---
+window.openAddAccountModal = function (accountType = 'checking') {
+  if (accountType === 'credit') { window.openAddCardModal(); return; }
+  if (accountType === 'savings') { window.openAddSavingsModal(); return; }
+
   const html = `
-    <form onsubmit="window.handleAddAccount(event)">
+    <form onsubmit="window.handleAddAccount(event, 'checking')">
       <div class="form-group">
-        <label>Nome da Conta / Apelido</label>
-        <input type="text" id="acc-name" class="form-input" placeholder="Ex: Minha Conta Principal, Cartão Black..." required>
+        <label>Nome da Conta</label>
+        <input type="text" id="acc-name" class="form-input" placeholder="Ex: Conta Principal, Nubank..." required>
       </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="form-group">
-          <label>Tipo de Conta</label>
-          <select id="acc-type" class="form-select" onchange="window.toggleCardFields(this.value)">
-            <option value="checking">Conta Corrente</option>
-            <option value="savings">Reserva</option>
-            <option value="credit">Cartão de Crédito</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Banco / Instituição</label>
-          <input type="text" id="acc-bank" class="form-input" placeholder="Ex: Nubank, Itaú, Wise, Nomad..." required>
-        </div>
-      </div>
-
-      <div class="form-group" id="group-acc-balance">
+      <div class="form-group">
         <label>Saldo Inicial (R$)</label>
         <input type="text" inputmode="numeric" id="acc-balance" data-currency-input class="form-input" placeholder="0,00" value="0,00">
       </div>
-
-      <!-- Credit Card Specific Fields -->
-      <div id="card-fields-container" style="display: none;">
-        <div class="form-group">
-          <label>Limite Total do Cartão (R$)</label>
-          <input type="text" inputmode="numeric" id="acc-limit" data-currency-input class="form-input" placeholder="5.000,00" value="5.000,00">
-        </div>
-
-        <div class="form-group">
-          <label>Fatura Atual (R$)</label>
-          <input type="text" inputmode="numeric" id="acc-card-balance" data-currency-input class="form-input" placeholder="0,00" value="0,00">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div class="form-group">
-            <label>Dia de Fechamento</label>
-            <select id="acc-closing-day" class="form-select">
-              ${renderDayPickerOptions(5)}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Dia de Vencimento</label>
-            <select id="acc-due-day" class="form-select">
-              ${renderDayPickerOptions(12)}
-            </select>
-          </div>
-        </div>
-      </div>
-
       <button type="submit" class="btn-primary" style="margin-top: 10px;">Cadastrar Conta</button>
     </form>
   `;
-
-  openModal('Nova Conta Bancária / Cartão', html);
+  openModal('Nova Conta Bancária', html);
 };
 
-window.toggleCardFields = function (type) {
-  const cardFields = document.getElementById('card-fields-container');
-  const balGroup = document.getElementById('group-acc-balance');
-  if (type === 'credit') {
-    if (cardFields) cardFields.style.display = 'block';
-    if (balGroup) balGroup.style.display = 'none';
-  } else {
-    if (cardFields) cardFields.style.display = 'none';
-    if (balGroup) balGroup.style.display = 'block';
-  }
+window.openAddSavingsModal = function () {
+  const html = `
+    <form onsubmit="window.handleAddAccount(event, 'savings')">
+      <div class="form-group">
+        <label>Nome da Reserva</label>
+        <input type="text" id="acc-name" class="form-input" placeholder="Ex: Reserva de Emergência, Fundo de Viagem..." required>
+      </div>
+      <div class="form-group">
+        <label>Saldo Inicial (R$)</label>
+        <input type="text" inputmode="numeric" id="acc-balance" data-currency-input class="form-input" placeholder="0,00" value="0,00">
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top: 10px;">Cadastrar Reserva</button>
+    </form>
+  `;
+  openModal('Nova Reserva', html);
 };
 
-window.handleAddAccount = function (e) {
+window.openAddCardModal = function () {
+  const html = `
+    <form onsubmit="window.handleAddAccount(event, 'credit')">
+      <div class="form-group">
+        <label>Nome do Cartão</label>
+        <input type="text" id="acc-name" class="form-input" placeholder="Ex: Cartão Black, Nubank Ultravioleta..." required>
+      </div>
+      <div class="form-group">
+        <label>Limite Total (R$)</label>
+        <input type="text" inputmode="numeric" id="acc-limit" data-currency-input class="form-input" placeholder="5.000,00" value="5.000,00">
+      </div>
+      <div class="form-group">
+        <label>Fatura Atual (R$)</label>
+        <input type="text" inputmode="numeric" id="acc-card-balance" data-currency-input class="form-input" placeholder="0,00" value="0,00">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group">
+          <label>Dia de Fechamento</label>
+          <select id="acc-closing-day" class="form-select">
+            ${renderDayPickerOptions(5)}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dia de Vencimento</label>
+          <select id="acc-due-day" class="form-select">
+            ${renderDayPickerOptions(12)}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top: 10px;">Cadastrar Cartão</button>
+    </form>
+  `;
+  openModal('Novo Cartão de Crédito', html);
+};
+
+window.handleAddAccount = function (e, type) {
   e.preventDefault();
   const name = document.getElementById('acc-name').value;
-  const type = document.getElementById('acc-type').value;
-  const bank = document.getElementById('acc-bank').value || name;
 
   if (type === 'credit') {
     const limit = window.parseCurrencyValue(document.getElementById('acc-limit').value);
     const balance = window.parseCurrencyValue(document.getElementById('acc-card-balance').value);
     const closingDay = Number(document.getElementById('acc-closing-day').value) || 5;
     const dueDay = Number(document.getElementById('acc-due-day').value) || 12;
-
-    window.store.addAccount({ name, type, bank, balance, limit, closingDay, dueDay });
+    window.store.addAccount({ name, type, bank: name, balance, limit, closingDay, dueDay });
+    window.showToast('Cartão adicionado com sucesso!');
+  } else if (type === 'savings') {
+    const balance = window.parseCurrencyValue(document.getElementById('acc-balance').value);
+    window.store.addAccount({ name, type, bank: name, balance, limit: 0 });
+    window.showToast('Reserva adicionada com sucesso!');
   } else {
     const balance = window.parseCurrencyValue(document.getElementById('acc-balance').value);
-    window.store.addAccount({ name, type, bank, balance, limit: 0 });
+    window.store.addAccount({ name, type: 'checking', bank: name, balance, limit: 0 });
+    window.showToast('Conta adicionada com sucesso!');
   }
 
   closeModal();
-  window.showToast('Conta adicionada com sucesso!');
 };
 
 window.openEditAccountModal = function (id) {
   const acc = window.store.getAccounts().find(a => a.id === id);
   if (!acc) return;
 
+  const isCredit = acc.type === 'credit';
+  const isSavings = acc.type === 'savings';
+  const typeLabel = isCredit ? 'Cartão de Crédito' : (isSavings ? 'Reserva' : 'Conta Bancária');
+  const deleteLabel = isCredit ? 'Excluir Cartão' : (isSavings ? 'Excluir Reserva' : 'Excluir Conta');
+
   const html = `
     <form onsubmit="window.handleUpdateAccount(event, '${acc.id}')">
       <div class="form-group">
-        <label>Nome da Conta / Apelido</label>
+        <label>Nome</label>
         <input type="text" id="edit-acc-name" class="form-input" value="${acc.name}" required>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="form-group">
-          <label>Tipo de Conta</label>
-          <select id="edit-acc-type" class="form-select" onchange="window.toggleCardFieldsEdit(this.value)">
-            <option value="checking" ${acc.type === 'checking' ? 'selected' : ''}>Conta Corrente</option>
-            <option value="savings" ${acc.type === 'savings' ? 'selected' : ''}>Reserva</option>
-            <option value="credit" ${acc.type === 'credit' ? 'selected' : ''}>Cartão de Crédito</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Banco / Instituição</label>
-          <input type="text" id="edit-acc-bank" class="form-input" value="${acc.bank || ''}" placeholder="Ex: Nubank, Itaú, Wise, Nomad..." required>
-        </div>
-      </div>
-
-      <div class="form-group" id="edit-group-acc-balance" style="${acc.type === 'credit' ? 'display: none;' : ''}">
+      ${!isCredit ? `
+      <div class="form-group">
         <label>Saldo Atual (R$)</label>
         <input type="text" inputmode="numeric" id="edit-acc-balance" data-currency-input class="form-input" value="${window.formatValueBR(acc.balance || 0)}">
+      </div>` : ''}
+
+      ${isCredit ? `
+      <div class="form-group">
+        <label>Limite Total (R$)</label>
+        <input type="text" inputmode="numeric" id="edit-acc-limit" data-currency-input class="form-input" value="${window.formatValueBR(acc.limit || 0)}">
       </div>
-
-      <!-- Credit Card Specific Fields -->
-      <div id="edit-card-fields-container" style="${acc.type === 'credit' ? 'display: block;' : 'display: none;'}">
-        <div class="form-group">
-          <label>Limite Total (R$)</label>
-          <input type="text" inputmode="numeric" id="edit-acc-limit" data-currency-input class="form-input" value="${window.formatValueBR(acc.limit || 0)}">
-        </div>
-
-        <div class="form-group">
-          <label>Fatura Atual (R$)</label>
-          <input type="text" inputmode="numeric" id="edit-acc-card-balance" data-currency-input class="form-input" value="${window.formatValueBR(acc.balance || 0)}">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div class="form-group">
-            <label>Dia de Fechamento</label>
-            <select id="edit-acc-closing-day" class="form-select">
-              ${renderDayPickerOptions(acc.closingDay || 5)}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Dia de Vencimento</label>
-            <select id="edit-acc-due-day" class="form-select">
-              ${renderDayPickerOptions(acc.dueDay || 12)}
-            </select>
-          </div>
-        </div>
+      <div class="form-group">
+        <label>Fatura Atual (R$)</label>
+        <input type="text" inputmode="numeric" id="edit-acc-card-balance" data-currency-input class="form-input" value="${window.formatValueBR(acc.balance || 0)}">
       </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group">
+          <label>Dia de Fechamento</label>
+          <select id="edit-acc-closing-day" class="form-select">
+            ${renderDayPickerOptions(acc.closingDay || 5)}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dia de Vencimento</label>
+          <select id="edit-acc-due-day" class="form-select">
+            ${renderDayPickerOptions(acc.dueDay || 12)}
+          </select>
+        </div>
+      </div>` : ''}
 
       <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
         <button type="submit" class="btn-primary">Salvar Alterações</button>
-        <button type="button" class="btn-danger" onclick="window.confirmDeleteAccount('${acc.id}')">Excluir Conta</button>
+        <button type="button" class="btn-danger" onclick="window.confirmDeleteAccount('${acc.id}')">${deleteLabel}</button>
       </div>
     </form>
   `;
 
-  openModal('Editar Conta / Cartão', html);
-};
-
-window.toggleCardFieldsEdit = function (type) {
-  const cardFields = document.getElementById('edit-card-fields-container');
-  const balGroup = document.getElementById('edit-group-acc-balance');
-  if (type === 'credit') {
-    if (cardFields) cardFields.style.display = 'block';
-    if (balGroup) balGroup.style.display = 'none';
-  } else {
-    if (cardFields) cardFields.style.display = 'none';
-    if (balGroup) balGroup.style.display = 'block';
-  }
+  openModal(`Editar ${typeLabel}`, html);
 };
 
 window.handleUpdateAccount = function (e, id) {
   e.preventDefault();
+  const acc = window.store.getAccounts().find(a => a.id === id);
+  if (!acc) return;
   const name = document.getElementById('edit-acc-name').value;
-  const type = document.getElementById('edit-acc-type').value;
-  const bank = document.getElementById('edit-acc-bank').value || name;
 
-  if (type === 'credit') {
+  if (acc.type === 'credit') {
     const limit = window.parseCurrencyValue(document.getElementById('edit-acc-limit').value);
     const balance = window.parseCurrencyValue(document.getElementById('edit-acc-card-balance').value);
     const closingDay = Number(document.getElementById('edit-acc-closing-day').value) || 5;
     const dueDay = Number(document.getElementById('edit-acc-due-day').value) || 12;
-
-    window.store.updateAccount(id, { name, type, bank, balance, limit, closingDay, dueDay });
+    window.store.updateAccount(id, { name, bank: name, balance, limit, closingDay, dueDay });
   } else {
     const balance = window.parseCurrencyValue(document.getElementById('edit-acc-balance').value);
-    window.store.updateAccount(id, { name, type, bank, balance, limit: 0 });
+    window.store.updateAccount(id, { name, bank: name, balance });
   }
 
   closeModal();
-  window.showToast('Conta atualizada!');
+  window.showToast('Atualizado com sucesso!');
 };
 
 window.confirmDeleteAccount = function (id) {
-  if (confirm('Deseja excluir esta conta? As transações vinculadas serão mantidas.')) {
-    window.store.deleteAccount(id);
-    closeModal();
-    window.showToast('Conta excluída!');
-  }
+  const acc = window.store.getAccounts().find(a => a.id === id);
+  if (!acc) return;
+  const label = acc.type === 'credit' ? 'cartão' : (acc.type === 'savings' ? 'reserva' : 'conta');
+  const html = `
+    <div style="display: flex; flex-direction: column; gap: 16px; text-align: center; padding: 10px 0;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-red-light); color: var(--color-red); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+        ${window.getSVGIcon('trash-2', 28, 2)}
+      </div>
+      <div>
+        <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">Excluir ${acc.name}?</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">Esta ação é <strong>permanente</strong>. As transações vinculadas serão mantidas, mas o ${label} será removido.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+        <button class="btn-danger" onclick="window.doDeleteAccount('${id}')" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          ${window.getSVGIcon('trash-2', 16, 2)} Excluir Permanentemente
+        </button>
+        <button class="btn-secondary" onclick="window.closeModal()" style="margin-top: 2px;">Cancelar</button>
+      </div>
+    </div>
+  `;
+  openModal('Confirmar Exclusão', html);
+};
+
+window.doDeleteAccount = function (id) {
+  window.store.deleteAccount(id);
+  closeModal();
+  window.showToast('Excluído com sucesso!');
 };
 
 // --- Modal: Edit & Delete Financial Goal ---
@@ -900,11 +1022,26 @@ window.handleUpdateGoal = function (e, id) {
 };
 
 window.confirmDeleteGoal = function (id) {
-  if (confirm('Deseja excluir esta meta financeira?')) {
-    window.store.deleteGoal(id);
-    closeModal();
-    window.showToast('Meta excluída!');
-  }
+  const goal = window.store.getGoals().find(g => g.id === id);
+  if (!goal) return;
+  const html = `
+    <div style="display: flex; flex-direction: column; gap: 16px; text-align: center; padding: 10px 0;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-red-light); color: var(--color-red); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+        ${window.getSVGIcon('trash-2', 28, 2)}
+      </div>
+      <div>
+        <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">Excluir Meta?</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">A meta <strong>${goal.title}</strong> será excluída permanentemente.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+        <button class="btn-danger" onclick="window.store.deleteGoal('${id}'); window.closeModal(); window.showToast('Meta excluída!');" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          ${window.getSVGIcon('trash-2', 16, 2)} Excluir Permanentemente
+        </button>
+        <button class="btn-secondary" onclick="window.closeModal()" style="margin-top: 2px;">Cancelar</button>
+      </div>
+    </div>
+  `;
+  openModal('Confirmar Exclusão', html);
 };
 
 // --- Modal: Deposit & Withdraw Goal ---
@@ -1090,16 +1227,32 @@ window.handleUpdateBill = function (e, id) {
 };
 
 window.confirmDeleteBill = function (id) {
-  if (confirm('Deseja excluir esta conta a pagar?')) {
-    window.store.deleteBill(id);
-    closeModal();
-    window.showToast('Conta excluída!');
-  }
+  const bill = window.store.getBills().find(b => b.id === id);
+  if (!bill) return;
+  const html = `
+    <div style="display: flex; flex-direction: column; gap: 16px; text-align: center; padding: 10px 0;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-red-light); color: var(--color-red); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+        ${window.getSVGIcon('trash-2', 28, 2)}
+      </div>
+      <div>
+        <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">Excluir Conta a Pagar?</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;"><strong>${bill.title}</strong> será excluída permanentemente.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+        <button class="btn-danger" onclick="window.store.deleteBill('${id}'); window.closeModal(); window.showToast('Conta excluída!');" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          ${window.getSVGIcon('trash-2', 16, 2)} Excluir Permanentemente
+        </button>
+        <button class="btn-secondary" onclick="window.closeModal()" style="margin-top: 2px;">Cancelar</button>
+      </div>
+    </div>
+  `;
+  openModal('Confirmar Exclusão', html);
 };
 
 // --- Modal: Transfer Funds ---
 window.openTransferModal = function () {
   const accounts = window.store.getAccounts();
+  const today = new Date().toISOString().split('T')[0];
 
   const html = `
     <form onsubmit="window.handleTransfer(event)">
@@ -1122,6 +1275,11 @@ window.openTransferModal = function () {
         <input type="text" inputmode="numeric" id="tr-amount" data-currency-input class="form-input" placeholder="0,00" required style="font-size: 1.3rem; font-weight: 800;">
       </div>
 
+      <div class="form-group">
+        <label>Data da Transferência</label>
+        <input type="date" id="tr-date" class="form-input" value="${today}" required>
+      </div>
+
       <button type="submit" class="btn-primary" style="margin-top: 10px;">Confirmar Transferência</button>
     </form>
   `;
@@ -1134,17 +1292,18 @@ window.handleTransfer = function (e) {
   const fromId = document.getElementById('tr-from').value;
   const toId = document.getElementById('tr-to').value;
   const amount = window.parseCurrencyValue(document.getElementById('tr-amount').value);
+  const date = document.getElementById('tr-date').value;
 
   if (fromId === toId) {
-    alert('A conta de origem e destino devem ser diferentes.');
+    window.showToast('A conta de origem e destino devem ser diferentes.', 'error');
     return;
   }
   if (amount <= 0) {
-    alert('Informe um valor válido.');
+    window.showToast('Informe um valor válido.', 'error');
     return;
   }
 
-  window.store.transferFunds(fromId, toId, amount);
+  window.store.transferFundsOnDate(fromId, toId, amount, date);
   closeModal();
   window.showToast('Transferência realizada!');
 };

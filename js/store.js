@@ -305,7 +305,7 @@ class FinanceStore {
     }
   }
 
-  transferFunds(fromId, toId, amount) {
+  transferFunds(fromId, toId, amount, date = null) {
     const fromAcc = this.data.accounts.find(a => a.id === fromId);
     const toAcc = this.data.accounts.find(a => a.id === toId);
 
@@ -313,17 +313,23 @@ class FinanceStore {
       this.applyTxToAccount(fromAcc, 'expense', amount, false);
       this.applyTxToAccount(toAcc, 'income', amount, false);
 
+      const txDate = date || new Date().toISOString().split('T')[0];
       this.addTransaction({
         type: 'transfer',
         amount: Number(amount),
         categoryId: 'cat-11',
         accountId: fromId,
         paymentMethod: 'Transferência',
+        date: txDate,
         note: `Transferência de ${fromAcc.name} para ${toAcc.name}`
       });
 
       this.save();
     }
+  }
+
+  transferFundsOnDate(fromId, toId, amount, date) {
+    return this.transferFunds(fromId, toId, amount, date);
   }
 
   // --- Budgets API ---
@@ -490,6 +496,38 @@ class FinanceStore {
     return this.data.categories || DEFAULT_CATEGORIES;
   }
 
+  addCategory(category) {
+    if (!this.data.categories) this.data.categories = [...DEFAULT_CATEGORIES];
+    const newCat = {
+      id: 'cat-' + Date.now(),
+      name: category.name,
+      type: category.type || 'expense',
+      color: category.color || '#007AFF',
+      icon: category.icon || 'package'
+    };
+    this.data.categories.push(newCat);
+    this.save();
+    return newCat;
+  }
+
+  updateCategory(id, updatedData) {
+    if (!this.data.categories) this.data.categories = [...DEFAULT_CATEGORIES];
+    const cat = this.data.categories.find(c => c.id === id);
+    if (cat) {
+      Object.assign(cat, updatedData);
+      this.save();
+    }
+  }
+
+  deleteCategory(id) {
+    if (!this.data.categories) this.data.categories = [...DEFAULT_CATEGORIES];
+    const idx = this.data.categories.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      this.data.categories.splice(idx, 1);
+      this.save();
+    }
+  }
+
   getMonthlyMetrics(year, month) {
     const prefix = `${year}-${String(month).padStart(2, '0')}`;
     const txs = this.getTransactions().filter(t => t.date && t.date.startsWith(prefix));
@@ -512,7 +550,15 @@ class FinanceStore {
       return acc + (Number(a.balance) || 0);
     }, 0);
 
-    return { income, expense, net, savingsRate, totalNetWorth };
+    const totalChecking = this.getAccounts()
+      .filter(a => a.type === 'checking')
+      .reduce((acc, a) => acc + (Number(a.balance) || 0), 0);
+
+    const totalSavings = this.getAccounts()
+      .filter(a => a.type === 'savings')
+      .reduce((acc, a) => acc + (Number(a.balance) || 0), 0);
+
+    return { income, expense, net, savingsRate, totalNetWorth, totalChecking, totalSavings };
   }
 
   exportJSON() {

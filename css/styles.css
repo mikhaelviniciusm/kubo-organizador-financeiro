@@ -150,6 +150,7 @@ html, body {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -185,8 +186,8 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
-  padding-bottom: 24px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+  padding-bottom: 16px;
   padding-left: 20px;
   padding-right: 20px;
   margin-bottom: -16px;
@@ -535,6 +536,29 @@ body.modal-open {
   word-break: keep-all !important;
 }
 
+/* Privacy Mode (Blur Financial Values Only) */
+[data-hide-values="true"] .val-blur,
+[data-hide-values="true"] .t-amount,
+[data-hide-values="true"] .balance-amount,
+[data-hide-values="true"] .val,
+[data-hide-values="true"] [data-amount],
+[data-hide-values="true"] .date-group-header span:last-child,
+[data-hide-values="true"] .hide-val {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter 0.3s ease;
+}
+
+[data-hide-values="true"] .val-blur:hover,
+[data-hide-values="true"] .t-amount:hover,
+[data-hide-values="true"] .balance-amount:hover,
+[data-hide-values="true"] .val:hover,
+[data-hide-values="true"] [data-amount]:hover,
+[data-hide-values="true"] .date-group-header span:last-child:hover,
+[data-hide-values="true"] .hide-val:hover {
+  filter: blur(0);
+}
+
 /* ── Health Badge ────────────────────────────────────────────────────────── */
 .health-badge {
   display: inline-flex;
@@ -798,6 +822,13 @@ body.modal-open {
   border: 1px solid var(--border-color);
   gap: 2px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.segmented-control::-webkit-scrollbar {
+  display: none;
 }
 
 .segmented-control button {
