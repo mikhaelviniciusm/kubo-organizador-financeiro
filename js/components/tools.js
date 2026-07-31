@@ -215,6 +215,24 @@ function renderCalculatorsSubTab() {
 
 function renderUtilitiesSubTab() {
   return `
+    <!-- Importador de Extrato Bancário (OFX / CSV Itaú) -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato Bancário (OFX / CSV)
+        </h3>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-secondary);">
+        Importe seu histórico de transações do Itaú, Nubank ou outros bancos em lote com categorização automática.
+      </p>
+
+      <div style="margin-top: 12px;">
+        <button class="btn-primary" onclick="window.openImportModal()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #5C9EAD 0%, #326273 100%); border-color: rgba(92,158,173,0.4);">
+          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato Itaú / OFX
+        </button>
+      </div>
+    </div>
+
     <!-- Fechamento de Mês & Relatório Consolidado -->
     <div class="card">
       <div class="card-header">

@@ -53,9 +53,13 @@ window.renderTransactions = function (container) {
         </button>
       </div>
 
-      <!-- Search Input -->
-      <div class="form-group" style="margin-bottom: 0;">
-        <input type="text" id="tx-search-input" class="form-input" placeholder="Buscar por descrição, categoria..." value="${window.currentTxFilter.search}">
+      <!-- Search Input & Import Button -->
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <input type="text" id="tx-search-input" class="form-input" style="flex: 1;" placeholder="Buscar por descrição, categoria..." value="${window.currentTxFilter.search}">
+        <button class="btn-secondary" onclick="window.openImportModal()" style="display: flex; align-items: center; gap: 6px; width: auto; padding: 0 14px; font-size: 0.84rem; font-weight: 700; white-space: nowrap;" title="Importar extrato OFX/CSV">
+          ${window.getSVGIcon('upload', 16, 2)}
+          Importar
+        </button>
       </div>
 
       <!-- Type Filter Segmented Control -->
