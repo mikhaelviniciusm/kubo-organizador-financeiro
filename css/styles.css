@@ -123,13 +123,41 @@
   --bg-header: rgba(238, 238, 238, 0.8);
 }
 
-/* ── Global Reset ────────────────────────────────────────────────────────── */
+/* ── Global Reset & Non-selectable Interface ──────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
   font-family: var(--font-main);
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Allow text selection ONLY in input fields, textareas and select dropdowns */
+input, textarea, select, [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Prevent image dragging, touch long-press context menus and selection globally */
+img, svg {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+.header-logo-img {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+  -webkit-touch-callout: none !important;
+  pointer-events: none !important;
 }
 
 /* Hide scrollbars globally while keeping scroll functionality */
