@@ -228,7 +228,7 @@ function renderUtilitiesSubTab() {
 
       <div style="margin-top: 12px;">
         <button class="btn-primary" onclick="window.openImportModal()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #5C9EAD 0%, #326273 100%); border-color: rgba(92,158,173,0.4);">
-          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato Itaú / OFX
+          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato
         </button>
       </div>
     </div>
