@@ -215,11 +215,11 @@ function renderCalculatorsSubTab() {
 
 function renderUtilitiesSubTab() {
   return `
-    <!-- Importador de Extrato Bancário (OFX / CSV Itaú) -->
+    <!-- Importador de Extrato Bancário -->
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">
-          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato Bancário (OFX / CSV)
+          ${window.getSVGIcon('upload', 18, 2)} Importar Extrato Bancário
         </h3>
       </div>
       <p style="font-size: 0.82rem; color: var(--text-secondary);">
